@@ -1,2 +1,2 @@
 # LearningMsg
-The message about coding, such as vuew, react, spring, mysql
+The message about coding, such as vue, react, spring, mysql
