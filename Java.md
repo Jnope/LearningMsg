@@ -17,3 +17,23 @@ https://www.cnblogs.com/crazymakercircle/p/14655412.html
 原子性，CAS自旋比较
 ## 多线程传参
 https://www.cnblogs.com/jpfss/p/10783847.html
+
+# UT
+JUnit5 + Mockito
+@ExtendWith(MockitoExtension.class) 作用于测试类头部
+
+## 模拟构造函数
+待测试方法中存在new获取实例，需要模拟实例返回：
+``` java
+  @InjectMocks
+  private TestClass testClass;
+
+	@Test
+	public void testHasName() {
+		try (MockedConstruction<MyClass> mocked = Mockito.mockConstruction(MyClass.class, (mock, context) -> {
+			Mockito.when(mock.do()).thenReturn("111");
+		})) {
+			assertEquals("111", testClass.do());
+		}
+	}
+```
