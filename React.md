@@ -2,11 +2,13 @@ https://blog.csdn.net/qq_16546829/article/details/137056845
 # 对比vue
 静态：数据驱动石头  
 单向数据流  
+
 # 虚拟DOM
 ## diff算法
 diff找出增删改查最小节点: DFS后续遍历  
 fiber：任务划分，优先级调度 --> 优化DOM计算和渲染  
 fiber为链表  
+
 # 生命周期及Hook
 ## 生命周期
 挂载前：构造函数, render，getDerivedStateFromProps  
@@ -39,8 +41,10 @@ function useOnlineStatus() {
 
 # 渲染过程
 state更新 -> 合并状态 -> 异步处理(合并相同state的set) -> 批处理（合并多个set）—> 状态更新调度 -> 检查useEffect依赖 -> 计算虚拟DOM -> DOM更新->更新
+
 # 事件代理
 最外层容器绑定监听器（17之后挂载到dom节点） -> 事件合成 -> 冒泡到顶层 -> 根据目标判断组件并调用处理器
+
 # 性能优化
 ## React.PureComponent || React.memo
 浅比较组件props和state，相等时不更新；PureComponent用于类组件，memo用于函数组件  
@@ -60,8 +64,10 @@ lazy按需加载
 ## 渲染
 将组件渲染到DOM外：createPortal  
 动画：requestAnimationFrame  
+
 # 高阶组件
-包装其他组件的函数：抽取相同逻辑代码，增加组件额外功能，共享状态，天送检渲染
+包装其他组件的函数：抽取相同逻辑代码，增加组件额外功能，共享状态，天送检渲染  
+
 # 受控非受控
 受控是用户输入直接改变state，通过onChange事件更新state  
 非受控是用户输入仅改变DOM属性，通过ref获取值
@@ -83,6 +89,7 @@ fiber
 
 # 项目
 ## 结合TS
+npx create-react-app my-project --template typescript创建
 ### 配置
 安装依赖 npm install -D @types/react @types/react-dom  
 tsconfig.json
@@ -117,4 +124,126 @@ tsconfig.json
 }
 ```
 lib内必须要dom  
+## 结合react-router
+npm i react-router-dom  
+创建router.tsx，index.tsx中直接使用<MyRouter />
+``` tsx
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Home } from "../home/Home";
+import { About } from "../about/About";
+
+export const MyRouter: React.FunctionComponent = () => (
+    <BrowserRouter>
+        <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/about/:param?" element={<About />} />
+            <Route path='*' element={<Navigate to="/" />} />
+        </Routes>
+    </BrowserRouter>
+);
+```
+### 使用
+``` tsx
+import { Link, useParams } from 'react-router-dom';
+import style from './About.module.scss';
+
+export const About: React.FunctionComponent = () => {
+    const { param } = useParams();
+
+    return <div className={style['about']}>
+        <div>This is About: {param ?? 'nothing'}</div>
+        <div><Link to={'/'}>Home</Link></div>
+    </div>;
+}
+```
+
+## 结合react-redux
+npm i react-redux @reduxjs/toolkit  
+创建store.ts, hook.ts, modelus  
+``` tsx
+// store.ts 配置store
+import { configureStore } from "@reduxjs/toolkit";
+import counter from "./modules/counter";
+export const store = configureStore({
+    reducer: {
+        counter,
+    }
+})
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+
+// hook.ts 映射数据和方法，避免重复定义
+import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "./store";
+export const useMyDisPatch = () => useDispatch<AppDispatch>();
+export const useMySelector: TypedUseSelectorHook<RootState> = useSelector;
+
+// modules文件夹内定义各个state
+import { createSlice } from "@reduxjs/toolkit";
+
+interface ICounter {
+    count: number;
+}
+
+const initialState: ICounter = {
+    count: 0
+}
+
+export const counterSlice = createSlice({
+    name: 'counter',
+    initialState,
+    reducers: {
+        increment: state => {
+            state.count += 1;
+        },
+        decrement: state => {
+            state.count -= 1;
+        }
+    }
+})
+
+export const { increment, decrement } = counterSlice.actions
+export default counterSlice.reducer;
+```
+### 使用
+``` tsx
+// index.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import reportWebVitals from './reportWebVitals';
+import { MyRouter } from './router/router';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
+const root = ReactDOM.createRoot(
+  document.getElementById('root') as HTMLElement
+);
+root.render(
+  <React.StrictMode>
+    <Provider store={store}>
+      <MyRouter />
+    </Provider>
+  </React.StrictMode>
+);
+
+// Home.tsx
+import { NavLink } from 'react-router-dom';
+import style from './Home.module.scss';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../store/store';
+import { useMyDisPatch, useMySelector } from '../store/hook';
+import { counterSlice, decrement } from '../store/modules/counter';
+export const Home: React.FunctionComponent = () => {
+    const counter = useSelector<RootState, number>(state => state.counter.count); // 或 const counter = useMySelector(state => state.counter.count);
+    const dispatch = useDispatch<AppDispatch>(); // 或 const dispatch = useMyDisPatch();
+    return (<div className={style['home']}>
+        <div>This is Home</div>
+        <div>Current count is: {counter}</div>
+        <div onClick={() => dispatch(counterSlice.actions.increment())}>Add</div>
+        <div onClick={() => dispatch(decrement())}>Minus</div>
+        <div><NavLink to={'/about/123'}>About</NavLink></div>
+    </div>);
+}
+```
 ## 结合webpack
