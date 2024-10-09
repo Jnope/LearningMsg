@@ -39,6 +39,88 @@ const answer = await inquirer.createPromptModule.prompt<Type>({ // Type为返回
 })
 ```
 # UI组件
+## 配置
+``` javascript
+// package.json内
+    "files": [ // 定义组件包含文件
+        "dist",
+        "out"
+    ],
+    "main": "dist/index.js", // 组件入口
+    "types": "out/src/index.d.ts", // type文件
+```
+## 组件库
+每个UI组件定义组件tsx以及输出index.ts  
+
+``` javscript
+// index.ts
+import '../../index.css';
+export * from './MyUI';
+
+// MyUI.tsx内为实际组件内容
+```
+src下index.ts导出所有组件
+``` javscript
+// index.ts
+import './index.css';
+export * from './path/MyUIA';
+export * from './path/MyUIB';
+```
+## 打包
+组件过多时，需要实现可引入单个组件，打包时做到去除其他未引入组件的能力  
+webpack.base.js：打包配置  
+webpack.all.js：打包入口./src/index.ts  
+``` javascript
+output: {
+        path: path.join(__dirname, 'dist'),
+        filename: 'index.js',
+        libraryTarget: 'umd',
+        library: 'common-ui',
+        umdNamedDefine: true,
+        globalObject: 'this',
+    }
+```
+webpack.component.js：打包入口为各个组件的index.ts  
+``` javascript
+output: {
+        path: path.join(__dirname, 'dist'),
+        filename: '[name]/index.js',
+        libraryTarget: 'umd',
+        library: '[name]',
+        umdNamedDefine: true,
+        globalObject: 'this',
+    }
+```
+## 使用
+项目内引入babel-plugin-import，'@babel/preset-env', '@babel/preset-react'  
+``` javascript
+// package.json中sideEffects: false
+// webpack对组件库做剪枝
+optimization: {
+        usedExports: true, // 表示开启使用tree shaking
+    },
+// rule中
+{
+                test: /\.(js|mjs|jsx)$/,
+                include: [path.resolve(__dirname, 'src')],
+                loader: 'babel-loader',
+                options: {
+                    babelrc: false,
+                    configFile: false,
+                    presets: ['@babel/preset-env', '@babel/preset-react'],
+                    plugins: [
+                        [
+                            'import',
+                            {
+                                libraryName: '@cloud/my-ui',
+                                libraryDirectory: 'dist',
+                            },
+                            '@cloud/my-ui',
+                        ],
+                    ],
+                },
+            }
+```
 
 # 函数组件
 
