@@ -29,7 +29,8 @@ hibernate.cfg.xml
 </hibernate-configuration>
 ```
 ### 属性
-|属性|描述|
+| 属性 | 描述 |
+| :---- | :---- |
 |hibernate.dialect|数据库类型|
 |hibernate.connection.driver_class|JDBC驱动类|
 |hibernate.connection.url|数据库url|
