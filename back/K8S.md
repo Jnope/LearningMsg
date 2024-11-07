@@ -210,7 +210,8 @@ spec:
 删除：kubectl delete -f deploy.yaml  
 
 ## service
-同类pod的对外接口--可用于服务发现、负载均衡
+同类pod的对外接口--可用于服务发现、负载均衡  
+类型 ClusterIP, NodePort, LoadBalance，ExternalName; NodePort, LoadBalance对外暴露服务  
 ### 创建service
 集群内部可访问 kubectl expose deploy dyn --name=svcn  --type=ClusterIP --port=8080 --target-port=80 -n nsn  
 集群外部可访问 kubectl deploy dyn --name=svcn  --type=NodePort --port=8080 --target-port=80 -n nsn  
@@ -227,17 +228,32 @@ metadata:
   name: svcn
   namespace: nsn
 spec:
-  clusterIP: 10.109.179.231 # 固定svc的内网ip
+  clusterIP: 10.109.179.231 # 固定svc的内网ip，设置为None时不适用负载均衡--使用headlines
+  sessionAffinity: ClientIP # 会话保持模式时使用
   ports:
   - port: 80
     protocol: TCP
     targetPort: 80
   selector:
     run: nginx
-  type: ClusterIP # service类型，ClusterIP内部NodePort外部
+  type: ClusterIP # service类型，ClusterIP内部，NodePort外部，LoadBalance在集群外再做负载均衡，ExternalName引入集群外部服务
 ```
 创建：kubectl create -f svc.yaml  
 删除：kubectl delete -f svc.yaml  
+
+### 详解
+每个系欸但运行着kube-proxy，会将servic写入etcd中，将最新service信息转换成对应访问规则  
+| kube-proxy工作模式 | 说明 | 链路 |
+| :--- | :--- | :-- |
+| userspace | 为每个service创建监听端口 | 请求->clusterIp->kube-proxy->pod，稳定单效率低 |
+| iptables | 为pod创建iptables规则 | 请求->kube-proxy->clusterIP(iptables)->pod |
+| ipvs | 为pod创建ipvs规则 | 请求->kube-proxy->clusterIP(虚拟服务)->pod |
+分发策略：不定义使用kube-proxy，随机轮询；基于客户端地址会话保持模式，所有请求固定转发到一个pod
+
+## Ingress
+Nodeport占用很多集群机器  
+LoadBalance每个service都需要一个，需要k8s外的机器支持  
+Ingress只要一个NodePort|LoadBalance  
 
 ## 数据存储Volumn
 实现同pod不同容器之间数据共享、持久化
@@ -252,7 +268,8 @@ spec:
 | NFS | 单独网络存储系统 |
 | PV | 持久化卷--k8s配置，管理员维护 |
 | PVC | 持久卷声明--用户请求、维护 |
-| EmptyDir |  |
+| ConfigMap | 配置存储信息 |
+| Secret | 配置存储敏感信息 |
 
 ### yaml配置
 ``` yml
@@ -286,9 +303,13 @@ spec:
     nfs: # 类型为nfs，需要准备nfs服务器，每个节点需要安装nfs以驱动nfs设备
       server: 0.0.0.0 # ip地址
       path: /root/nfs # 共享文件路径
-    persistentVolumeClaim:
+    persistentVolumeClaim: # PVC
       claimName: pvc
       readOnly: false
+    configMap: # 
+      name: configmap
+    secret: # 
+      secretName: secret
 ```
 创建 ubectl create -f volumn.yaml
 
@@ -322,6 +343,72 @@ spec:
   resources: # 请求空间
     requests:
       storage: 5Gi
+```
+
+### 配置存储
+#### ConfigMap
+``` yml
+# config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  namespace: nsn
+data:
+  info: |
+    username:admin
+    password:123456
+```
+创建 kubectl ctreate -f config.yaml  
+查看 kubectl describe cm configmap -n nsn  
+#### Secret
+``` yml
+# secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret
+  namespace: nsn
+type: Opaque
+data:
+  username:admin
+  password:123456
+```
+创建 kubectl ctreate -f secret.yaml  
+查看 kubectl describe secret secret -n nsn  
+
+## 认证
+客户端：UserAccount ServiceAccount  
+认证流程：Authentication认证 -> Authorization授权 -> AdmissionControl准入控制  
+认证方式：用户名+密码编码后放入请求头，token，CA根证书签名刷想数字证书认证  
+授权策略：AlwaysDeny, AlwaysAllow(默认, 无授权), ABAC(基于属性访问), Webhook, Node, RBAC(基于角色方法)
+### 角色
+``` yml
+kind: Role # Role指定命名空间内资源, ClusterRole指定集群内
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: nsn # 仅Role需要
+  name: author
+rules:
+- apiGroups: [""]  # 支持的API组列表, ""-核心API群, "apps", "autoscaling", "batch"
+  resources: ["pods"] # 支持的资源对象列表, "services", "endpoints", "pods","secrets","configmaps","crontabs","deployments","jobs","nodes","rolebindings","clusterroles","daemonsets","replicasets","statefulsets","horizontalpodautoscalers","replicationcontrollers","cronjobs"
+  verbs: ["get", "watch", "list"] # 允许的对资源对象的操作方法列表，"get", "list", "watch", "create", "update", "patch", "delete", "exec"
+```
+角色绑定
+``` tml
+kind: RoleBinding # RoleBinding ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: authorization-role-binding
+  namespace: nsn # 仅RoleBinding使用
+subjects:
+- kind: User
+  name: heima
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: author
+  apiGroup: rbac.authorization.k8s.io
 ```
 
 # 竞品
