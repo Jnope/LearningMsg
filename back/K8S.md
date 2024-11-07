@@ -239,6 +239,91 @@ spec:
 创建：kubectl create -f svc.yaml  
 删除：kubectl delete -f svc.yaml  
 
+## 数据存储Volumn
+实现同pod不同容器之间数据共享、持久化
+### 类型
+简单：EmptyDir、HostPath、NFS  
+高级存储：PV、PVC，屏蔽底层存储实现细节  
+配置存储：ConfigMap、Secret  
+| 类型 | 说明 |
+| :--- | :--- |
+| EmptyDir | 跟随pod销毁 |
+| HostPath | 持久化到主机 |
+| NFS | 单独网络存储系统 |
+| PV | 持久化卷--k8s配置，管理员维护 |
+| PVC | 持久卷声明--用户请求、维护 |
+| EmptyDir |  |
+
+### yaml配置
+``` yml
+# volumn.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pdn
+  namespace: nsn
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    ports:
+    - containerPort: 80
+    volumeMounts:  # 将logs-volume挂在到nginx容器中，对应的目录为 /var/log/nginx
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh","-c","tail -f /logs/access.log"] # 初始命令，动态读取指定文件中内容
+    volumeMounts:  # 将logs-volume 挂在到busybox容器中，对应的目录为 /logs
+    - name: logs-volume
+      mountPath: /logs
+  volumes: # 声明volume， name为logs-volume
+  - name: logs-volume
+    emptyDir: {} # 类型为emptyDir
+    hostPath: # 类型为hostPath
+      path: /root/logs # 路径
+      type: DirectoryOrCreate # 不存在时创建，DirectoryOrCreate|Directory|FileOrCreate|File|Socket|CharDevice|BlockDevice
+    nfs: # 类型为nfs，需要准备nfs服务器，每个节点需要安装nfs以驱动nfs设备
+      server: 0.0.0.0 # ip地址
+      path: /root/nfs # 共享文件路径
+    persistentVolumeClaim:
+      claimName: pvc
+      readOnly: false
+```
+创建 ubectl create -f volumn.yaml
+
+#### PV/PVC
+``` yml
+# pv.yaml
+apiVersion: v1  
+kind: PersistentVolume
+metadata:
+  name: pvn
+spec:
+  nfs: # 存储类型，与底层真正存储对应
+  capacity:  # 存储能力，目前只支持存储空间的设置
+    storage: 2Gi
+  accessModes: ReadWriteOnce # 访问模式, ReadWriteOnce单节点读写|ReadOnlyMany多节点只读|ReadWriteMany多节点读写
+  storageClassName: # 存储类别，PV、PVC该项相同或都未设置时才能绑定
+  persistentVolumeReclaimPolicy: Retain # 回收策略，Retain保留|Recycle回收|Delete删除
+```
+PV状态 Available|Bound|Released|Failed
+``` yml
+# pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc
+  namespace: nsn
+spec:
+  accessModes: # 访问模式
+  selector: # 采用标签对PV选择
+  storageClassName: # 存储类别
+  resources: # 请求空间
+    requests:
+      storage: 5Gi
+```
+
 # 竞品
 ## Swarm
 
