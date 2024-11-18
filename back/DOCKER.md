@@ -24,6 +24,11 @@ docker run -itd --name test2 --network bridge_name ubuntu /bin/bash
 ```
 连接后各个容器内可以访问另一个容器: 在test2中 ping test1
 
+### 查看容器
+docker ps 查看容器列表  
+docker stats id 查看容器GC情况  
+docker exec -it id bin/bash 进入容器  
+
 # Dockerfile
 FROM: 基础镜像--如ngnix  
 RUN：执行命令--RUN xxx或RUN ["文件", "参数1", "参数2"]两种格式；每次RUN会新建层  
@@ -82,3 +87,4 @@ docker-machine cmd name 对name机器操作xxx命令
 |ssh|进入机器|
 
 # 集群管理Swarm
+使用k8s
