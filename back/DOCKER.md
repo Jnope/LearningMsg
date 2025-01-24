@@ -10,6 +10,13 @@ docker run -d -P training/webapp cmd
 | docker ps | 查看正在运行的容器 |
 | docker port name/id [dockerPort] | 查看指定id或名的容器的端口信息 |
 
+``` shell
+# 进入镜像
+docker run -it --net=host --rm imagexxx:versionxxx /bin/bash
+# 进入容器
+docker exec -it containeridxxx bash
+```
+
 ## 日志
 docker logs -f id/name
 
@@ -55,6 +62,17 @@ RUN：执行命令--RUN xxx或RUN ["文件", "参数1", "参数2"]两种格式�
 | HEALTHCHECK |	定义周期性检查容器健康状态的命令。 | |
 | SHELL | 覆盖Docker中默认的shell，用于RUN、CMD和ENTRYPOINT指令。 | |
 
+## 根据Dockerfile构建镜像
+``` shell
+docker pull oldImage
+docker tag oldImage tmpImage
+# 在Dockerfile同级文件夹
+docker build --network=host -f Dockerfile -t newImage .
+docker tage newImage repo/newImage
+docker login ipxxx(of repo) -u name =p passward
+dockerr push repo/newImage
+```
+
 # Compose
 ## docker-compose.yml
 ``` yml
@@ -72,8 +90,9 @@ services:
 web: web服务从当前目录Dockerfile构建镜像，将容器5000端口绑定至主机5001  
 redis: redis使用公共redis镜像  
 depends_on: 依赖  
-## 启动
-docker-compose up -d
+## 基本命令
+启动：docker-compose up -d  
+停止：docker-compose down
 
 # Machine
 docker-machine ls 查看虚拟机  
