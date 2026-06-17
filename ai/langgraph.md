@@ -34,7 +34,7 @@ START节点：指定首步执行节点
 END节点：终止节点
 
 ```python
-def my_node(state: State, config: RunnableConfig):
+def my_node(state: State, config: RunnableConfig, store: BaseStore):
     print("In node: ", config["configurable"]["user_id"])
     return {"results": f"Hello, {state['input']}!"}
 ```
@@ -98,7 +98,7 @@ config = {
   "configurable": {
     "llm": "anthropic",
     "thread_id": "1", # 线程id
-    "checkpoint_id": "xxxx" # 检查点id
+    "checkpoint_id": "xxxx" # optional, 检查点id
   }
 }
 ```
@@ -118,13 +118,75 @@ builder.add_edge("node_2", "node_3")
 builder.add_edge("node_3", END)
 
 checkpointer = InMemorySaver()
-graph = builder.compile(checkpointer=checkpointer)
+graph = builder.compile(checkpointer=checkpointer, store=store)
 graph.invoke(inputs, config=config)
 ```
 
-### 检查点
-
 # 持久化
 
-graph.get_state(config) 获取最新或指定检查点的状态
-graph.get_state_history(config) 获取状态历史
+状态历史：graph.get_state_history(config) 获取倒序状态历史，其中包括 checkpoint_id
+状态值：graph.get_state(config) 获取最新或指定检查点（configurable中指定checkpoint_id）的状态
+
+## 检查点
+
+在图超级步骤执行后生成图状态 StateSnapshot 快照：初始、每个节点执行后
+启用：configurable 中指定 thread_id
+
+### 库
+
+- langgraph-checkpoint，默认JsonPlusSerializer序列化，需要使用pickle时 `python serde=JsonPlusSerializer(pickle_fallback=True)`
+- langgraph-checkpoint-sqlite
+- langgraph-checkpoint-postgres
+
+## 重放
+
+configurable 指定 checkpoint_id，graph.invoke(state, config)
+
+## 更新
+
+graph.update_state(config, {"foo": 2, "bar": ["b"]})
+
+## 存储
+
+```python
+store = InMemoryStore(index={
+    "embed": init_embeddings("openai:text-embedding-3-small"),  # 嵌入提供者 —— 语义搜索
+    "dims": 1536,                              # 嵌入维度
+    "fields": ["a", "$"]         # 要嵌入的字段
+})
+
+# 存储
+memory_id = "123"
+memory = {"a": 1, "b": 2}
+store.put( # 存储
+    namespace_for_memory,
+    memory_id,
+    memory,
+    index=["a"], # 指定语义化字段
+)
+
+# 获取
+memories = store.search(namespace_for_memory)
+res = memories[-1].dict()
+
+# 属性
+res = {
+  'value': {'a': 1, 'b': 2},
+  'key': '123',
+  'namespace': ['1', 'memories'],
+  'created_at': '2024-10-02T17:22:31.590602+00:00',
+  'updated_at': '2024-10-02T17:22:31.590605+00:00'
+}
+```
+
+### 语义化
+
+index 语义化搜索
+
+```python
+memories = store.search(
+    namespace_for_memory,
+    query="What's a?",
+    limit=3  # 返回前 3 个匹配项
+)
+```
