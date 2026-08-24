@@ -256,3 +256,40 @@ qiankun 通过 JS 沙箱（Proxy 沙箱）隔离全局变量，通过 CSS Shadow
 设计思路：1）接口聚合——前端一个请求，BFF 并行调用多个后端接口，聚合后返回统一格式；2）数据裁剪——根据前端页面需求，BFF 只返回需要的字段，减少传输体积；3）格式适配——将后端统一返回格式转换为前端组件期望的格式，如分页结构、树形结构转换；4）缓存策略——BFF 层可缓存高频查询结果，减轻后端压力。
 
 # 一面
+
+## electron
+
+## dom 渲染
+
+## 横纵排中间
+
+## postion
+
+## spring 全家桶
+
+Spring Framework：IoC 容器（依赖注入）和 AOP
+Spring Boot：自动配置 + 起步依赖，内嵌 tomcat
+Spring Cloud：微服务解决方案总集，服务注册发现、配置中心、负载均衡、熔断限流等一整套能力
+Nacos：服务注册及配置
+OpenFeign：声明式 HTTP 客户端
+Spring Cloud LoadBalancer：客户端负载均衡，配合 OpenFeign 使用，将请求轮询/加权分发到多个服务实例
+Sentinel：流量控制和熔断降级，支持 QPS/线程数限流、熔断策略（慢调用/异常比例）、系统自适应保护
+MyBatis + PageHelper：SQL 半自动 ORM 框架
+Spring Security：认证授权如 OAuth2，JWT
+Spring Cloud Stream：基于发布-订阅模式的消息驱动，封装了 Kafka/RabbitMQ 等消息中间件，统一编程模型
+Spring Integration：企业集成模式实现，支持消息路由、转换、聚合等
+Spring Boot Actuator + Micrometer：生产级监控端点，暴露 /health、/metrics、/info 等端点，配合 Prometheus 抓取指标，实现 JVM\、系统、业务指标埋点
+Spring Task / Quartz：@Scheduled 和复杂定时任务
+Spring Cache：@Cacheable、@CacheEvict 缓存
+Spring Validation:@Valid, @NotBlank 校验
+Spring AOP：切面编程
+
+## 网关及负载均衡
+
+nginx nacos 模块动态从 nacos 获取 upstream 节点；
+nacos 注册和发现服务；
+loadbalancer 根据负载均衡策略从实例列表中选择一个目标实例；
+
+## K8S
+
+k8s 类型 pod，deployment，job
